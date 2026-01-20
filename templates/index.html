@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#d4af37">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}"><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CineSaga Pro | The Director's Cut</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+
+    <style>
+        /* ==========================================================================
+           1. CORE VARIABLES (TEMA MOTORU)
+           ========================================================================== */
+        :root {
+            /* Renk Paleti: Noir Gold & Deep Void */
+            --gold-primary: #d4af37;
+            --gold-glow: rgba(212, 175, 55, 0.4);
+            --gold-dim: #8a7020;
+            
+            --bg-void: #050505;     /* Ana Arka Plan */
+            --bg-card: #101010;     /* Kart Arka Planı */
+            --bg-overlay: rgba(0, 0, 0, 0.95);
+            
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            
+            --border-light: 1px solid rgba(255, 255, 255, 0.08);
+            --border-gold: 1px solid rgba(212, 175, 55, 0.3);
+            
+            /* Durumlar */
+            --color-success: #2e8b57;
+            --color-error: #cf3030;
+
+            /* Efektler */
+            --shadow-float: 0 15px 40px rgba(0,0,0,0.6);
+            --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+
+        /* Reset & Base */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        
+        /* Özel Scrollbar Tasarımı (Webkit) */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gold-primary); }
+
+        body {
+            background-color: var(--bg-void);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0; padding: 0;
+            background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+
+        /* ==========================================================================
+           2. HEADER (ÜST KONSOL)
+           ========================================================================== */
+        .cine-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 75px;
+            background: rgba(8, 8, 8, 0.9); backdrop-filter: blur(10px);
+            border-bottom: var(--border-light);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 5%; z-index: 1000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        .brand-logo {
+            font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700;
+            color: var(--gold-primary); letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .stats-rack { display: flex; gap: 25px; align-items: center; }
+        .stat-pod { text-align: center; }
+        .stat-label { font-size: 0.6rem; color: #666; letter-spacing: 2px; text-transform: uppercase; }
+        .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: #fff; }
+        .stat-val.gold { color: var(--gold-primary); text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+
+        .btn-premiere {
+            background: transparent; border: 1px solid var(--gold-primary);
+            color: var(--gold-primary); padding: 8px 16px;
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; transition: 0.3s;
+        }
+        .btn-premiere:hover { background: var(--gold-primary); color: #000; box-shadow: 0 0 15px var(--gold-glow); }
+        .btn-premiere:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #444; box-shadow: none; }
+
+        /* ==========================================================================
+           3. MAP SYSTEM (YOLCULUK HARİTASI)
+           ========================================================================== */
+        .map-viewport {
+            position: relative; 
+            padding: 150px 0 150px 0; 
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column-reverse; /* AŞAĞIDAN YUKARIYA */
+            align-items: center;
+            gap: 40px;
+        }
+
+        .road-line {
+            position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+            background: linear-gradient(to top, transparent, var(--gold-dim), transparent);
+            transform: translateX(-50%); z-index: -1; opacity: 0.2;
+        }
+
+        .level-node {
+            width: 65px; height: 65px; border-radius: 50%;
+            background: var(--bg-card); border: 2px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Playfair Display', serif; font-size: 1.2rem; color: #555;
+            transition: all 0.5s var(--ease-out);
+            position: relative; z-index: 2;
+        }
+
+        .level-node.active {
+            border-color: var(--gold-primary); color: var(--gold-primary);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+            transform: scale(1.2); background: #000; cursor: pointer;
+        }
+        .level-node.active::after {
+            content: "SAHNE"; position: absolute; bottom: -25px;
+            font-family: 'Inter', sans-serif; font-size: 0.6rem; letter-spacing: 2px;
+            color: var(--gold-primary);
+        }
+
+        .level-node.completed { background: var(--gold-dim); color: #000; border-color: var(--gold-dim); }
+        .level-node.locked { opacity: 0.2; border-style: dashed; }
+
+        /* --- BİLGİ KUTULARI (TRIVIA MARKERS) --- */
+        .trivia-marker {
+            width: 80%; max-width: 500px;
+            background: rgba(20, 20, 20, 0.85);
+            border-left: 3px solid var(--gold-primary);
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.4s;
+            z-index: 5;
+        }
+        .trivia-marker:hover { transform: scale(1.02); background: rgba(30, 30, 30, 0.95); }
+
+        .trivia-icon {
+            position: absolute; top: -15px; left: -15px;
+            width: 30px; height: 30px; background: var(--gold-primary);
+            color: #000; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-family: 'Playfair Display', serif;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .trivia-title {
+            font-size: 0.7rem; color: var(--gold-primary); text-transform: uppercase;
+            letter-spacing: 2px; margin-bottom: 8px; display: block;
+        }
+        
+        .trivia-body {
+            font-size: 0.9rem; line-height: 1.5; color: #ccc;
+            font-family: 'Inter', sans-serif;
+            font-style: italic;
+        }
+
+        /* ==========================================================================
+           4. GAME STAGE (MODAL PENCERE)
+           ========================================================================== */
+        #stage-overlay {
+            display: none; position: fixed; inset: 0;
+            background: var(--bg-overlay); z-index: 2000;
+            justify-content: center; align-items: center; padding: 20px;
+            opacity: 0; transition: opacity 0.4s ease;
+        }
+        #stage-overlay.visible { opacity: 1; }
+
+        .cinema-card {
+            width: 100%; max-width: 1000px; height: 650px; max-height: 90vh;
+            background: var(--bg-card); border: 1px solid #333;
+            display: grid; grid-template-columns: 1fr 1fr; /* 50% - 50% */
+            box-shadow: 0 50px 100px #000; position: relative;
+            overflow: hidden; /* Kartın kendisi taşmasın */
+            transform: translateY(30px); transition: transform 0.5s var(--ease-out);
+        }
+        #stage-overlay.visible .cinema-card { transform: translateY(0); }
+
+        .btn-close-stage {
+            position: absolute; top: 15px; right: 15px;
+            background: rgba(0,0,0,0.5); border: 1px solid #333; color: #fff;
+            border-radius: 50%; width: 36px; height: 36px;
+            cursor: pointer; transition: 0.3s; z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-close-stage:hover { background: var(--color-error); border-color: var(--color-error); transform: rotate(90deg); }
+
+        /* Sol Taraf: Medya */
+        .stage-visual {
+            background: #000; position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            border-right: 1px solid #222;
+        }
+        .stage-visual img {
+            width: 100%; height: 100%; object-fit: cover;
+            transition: filter 0.5s;
+        }
+        
+        .fx-blur { filter: blur(12px) grayscale(40%); transform: scale(1.1); }
+        .fx-pixel { image-rendering: pixelated; filter: contrast(1.4); width: 200% !important; height: 200% !important; }
+
+        /* Sağ Taraf: Etkileşim (SCROLLABLE AREA) */
+        .stage-interface {
+            padding: 40px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-start; /* İçerik yukarıdan başlasın */
+            background: radial-gradient(circle at top right, #1a1a1a, #0f0f0f);
+            position: relative;
+            overflow-y: auto; /* DİKEY KAYDIRMA AKTİF */
+            max-height: 100%; /* Kart boyunu aşarsa kaydır */
+        }
+
+        .q-meta { font-size: 0.7rem; color: var(--gold-primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; opacity: 0.8; display: block;}
+        .q-text { font-family: 'Playfair Display', serif; font-size: 1.5rem; line-height: 1.4; color: #fff; margin-bottom: 30px; }
+
+        /* Seçenekler */
+        .opt-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
+        .opt-btn {
+            padding: 16px 20px; background: rgba(255,255,255,0.03); border: 1px solid #333;
+            color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+            cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;
+        }
+        .opt-btn:hover { border-color: var(--gold-primary); background: rgba(212, 175, 55, 0.05); color: var(--gold-primary); }
+        .opt-btn.correct { border-color: var(--color-success); background: rgba(46, 139, 87, 0.15); color: var(--color-success); }
+        .opt-btn.wrong { border-color: var(--color-error); background: rgba(207, 48, 48, 0.15); color: var(--color-error); }
+
+        /* Klavye Alanı */
+        .input-area { display: none; margin-top: 20px; margin-bottom: 30px; }
+        .cine-input {
+            width: 100%; background: transparent; border: none; border-bottom: 2px solid #444;
+            color: var(--gold-primary); font-family: 'JetBrains Mono', monospace; font-size: 1.4rem;
+            padding: 10px 0; letter-spacing: 3px; text-transform: uppercase;
+        }
+        .cine-input:focus { outline: none; border-color: var(--gold-primary); }
+
+        /* İpucu Kutusu */
+        .hint-container {
+            margin-top: auto; 
+            padding-top: 20px; 
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        #hint-text {
+            display: none; 
+            color: var(--gold-dim); 
+            font-size: 0.9rem; 
+            font-style: italic; 
+            line-height: 1.5;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-left: 2px solid var(--gold-dim);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .cinema-card { grid-template-columns: 1fr; height: 100vh; max-height: none; border: none; overflow-y: auto; }
+            .stage-visual { height: 35vh; border-bottom: 1px solid #333; border-right: none; flex-shrink: 0;}
+            .stage-interface { padding: 25px; height: auto; overflow-y: visible;} /* Mobilde native scroll kullansın */
+            .q-text { font-size: 1.2rem; }
+            .trivia-marker { width: 90%; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="cine-header">
+        <div class="brand-logo">
+            <i data-feather="film"></i> CINE SAGA
+        </div>
+        <div class="stats-rack">
+            <div class="stat-pod">
+                <span class="stat-label">HAK</span>
+                <span class="stat-val" id="ui-lives">{{ user.lives }}</span>
+            </div>
+            <div class="stat-pod">
+                <span class="stat-label">LEVEL</span>
+                <span class="stat-val gold" id="ui-level">{{ user.level }}</span>
+            </div>
+            <div class="stat-pod">
+                <span class="stat-label">XP</span>
+                <span class="stat-val" id="ui-xp">{{ user.xp }}</span>
+            </div>
+            <button class="btn-premiere" id="daily-btn" onclick="Director.startDaily()" {% if not user.can_play_daily %}disabled{% endif %}>
+                PREMIERE
+            </button>
+        </div>
+    </header>
+
+    <main class="map-viewport">
+        <div class="road-line"></div>
+        <div id="map-container" style="display:contents;">
+            </div>
+    </main>
+
+    <div id="stage-overlay">
+        <div class="cinema-card">
+            
+            <button class="btn-close-stage" onclick="Director.closeScene()" title="Perdeyi Kapat">
+                <i data-feather="x"></i>
+            </button>
+
+            <div class="stage-visual" id="visual-root"></div>
+
+            <div class="stage-interface">
+                <span class="q-meta" id="q-meta">SİNEMA TARİHİ</span>
+                <h2 class="q-text" id="q-text">Soru yükleniyor...</h2>
+
+                <div class="opt-grid" id="options-root"></div>
+
+                <div class="input-area" id="input-root">
+                    <input type="text" class="cine-input" id="text-input" placeholder="YANITI GİRİN..." autocomplete="off">
+                    <div style="margin-top:10px; font-size:0.75rem; color:#666;">Onaylamak için <strong style="color:#888">ENTER</strong>'a basın</div>
+                </div>
+
+                <div class="hint-container">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <button onclick="Director.revealHint()" style="background:none; border:none; color:#666; cursor:pointer; font-size:0.8rem; text-decoration:underline; transition:0.3s;">İpucu İste (-%50 XP)</button>
+                        <i data-feather="help-circle" style="color:#333; width:16px;"></i>
+                    </div>
+                    <div id="hint-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+
+        /**
+         * GENİŞLETİLMİŞ CINEFACTS KÜTÜPHANESİ
+         */
+        const CINE_FACTS = [
+            { title: "GİZLİ KAHRAMAN", body: "Edward Norton, 'Kingdom of Heaven' filminde maske taktığı için jenerikte isminin geçmemesini kendi istemiştir." },
+            { title: "DOĞAÇLAMA", body: "The Shining'deki meşhur 'Here's Johnny!' sahnesi tamamen Jack Nicholson'ın doğaçlamasıdır." },
+            { title: "GERÇEK KAN", body: "Django Unchained çekimlerinde Leonardo DiCaprio elini gerçekten kesmiş ve sahneye o şekilde devam etmiştir." },
+            { title: "SES TASARIMI", body: "Star Wars'taki TIE Fighter sesi, bir filin böğürmesi ile ıslak yolda giden bir arabanın sesinin karışımıdır." },
+            { title: "BÜTÇE ZAFERİ", body: "Dallas Buyers Club filminin makyaj bütçesi sadece 250 dolardı. Buna rağmen Oscar kazandı." },
+            { title: "RENK KODLARI", body: "The Matrix'te Matrix içi sahneler yeşil, gerçek dünya sahneleri ise mavi filtre ile çekilmiştir." },
+            { title: "DUBLÖR YOK", body: "Tom Cruise, Mission Impossible: Rogue Nation'da uçak sahnesi için gerçekten uçağın dışına asılı kalmıştır." },
+            { title: "ZAMAN BÜKÜLMESİ", body: "Inception'daki 'Je Ne Regrette Rien' şarkısı, rüyanın derinliğine göre yavaşlatılarak kullanılmıştır." },
+            { title: "DİJİTAL FELAKET", body: "Toy Story 2 yanlışlıkla silinmişti. Bir çalışanın evindeki yedekleme sayesinde film kurtarıldı." },
+            { title: "METOD OYUNCULUĞU", body: "Heath Ledger, Joker rolü için kendini 6 hafta bir otel odasına kapatıp karakterin günlüğünü tutmuştur." },
+            { title: "YASAL DEĞER", body: "Oscar heykelciğinin teknik değeri 1 dolardır. Akademiye geri satılmadan başkasına satılamaz." },
+            { title: "KEDİ FAKTÖRÜ", body: "The Godfather açılış sahnesindeki kedi senaryoda yoktu, Marlon Brando onu sette bulup kucağına aldı." },
+            { title: "HAYVAN SESLERİ", body: "The Lion King'deki kükreme sesleri aslanlardan değil kaplanlardan alınmıştır, aslan sesi fazla boğuk kalıyordu." },
+            { title: "TARIM MERAKI", body: "Christopher Nolan, Interstellar için 500 dönüm mısır ektirmiş ve çekimler bitince hasadı satıp kar etmiştir." },
+            { title: "GÜLME KRİZİ", body: "The Usual Suspects poster çekiminde oyuncular gülmekten duramıyordu çünkü Benicio del Toro sürekli gaz çıkarıyordu." },
+            { title: "SOĞUK SAVAŞ", body: "Rocky IV'teki dövüş sahnelerinde Stallone ve Lundgren gerçekten birbirlerine vurmuş, Stallone 4 gün yoğun bakımda kalmıştır." },
+            { title: "NASA ONAYI", body: "Armageddon filmi, NASA yönetim eğitimlerinde 'Bu filmde kaç tane fizik hatası var?' testi olarak izletilmektedir." },
+            { title: "ÇİKOLATA IRMAĞI", body: "Charlie'nin Çikolata Fabrikası'ndaki ırmak gerçek çikolatadan değil, su ve gıda boyasından yapılmıştı ve çok kötü kokuyordu." },
+            { title: "KARANLIK TARAF", body: "Darth Vader, orijinal üçlemede ekranda toplamda sadece 12 dakika görünmektedir." },
+            { title: "TESADÜF", body: "Anthony Hopkins, The Girl from Petrovka filmi için aradığı kitabı bir bankta unutulmuş halde bulmuştur." }
+        ];
+
+        const Director = {
+            state: {
+                currentLevel: {{ user.level }},
+                questions: [],
+                qIndex: 0,
+                isDaily: false,
+                isLocked: false,
+                hintUsed: false
+            },
+
+            init() {
+                this.renderMap();
+                document.getElementById('text-input').addEventListener('keypress', (e) => {
+                    if(e.key === 'Enter') this.handleInput(e.target.value);
+                });
+            },
+
+            renderMap() {
+                const container = document.getElementById('map-container');
+                container.innerHTML = '';
+                let factIndex = 0;
+
+                for(let i=1; i<=500; i++) {
+                    const node = document.createElement('div');
+                    let status = 'locked';
+                    
+                    if(i < this.state.currentLevel) status = 'completed';
+                    else if(i === this.state.currentLevel) status = 'active';
+
+                    node.className = `level-node ${status}`;
+                    node.innerText = i;
+
+                    if(i === this.state.currentLevel) {
+                        node.onclick = () => this.startLevel();
+                        setTimeout(() => node.scrollIntoView({behavior: "smooth", block: "center"}), 800);
+                    }
+                    container.appendChild(node);
+
+                    // BİLGİ KUTULARI (SIKLAŞTIRILDI: Her 7 seviyede bir)
+                    if(i % 7 === 0) {
+                        const fact = CINE_FACTS[factIndex % CINE_FACTS.length];
+                        const marker = document.createElement('div');
+                        marker.className = 'trivia-marker';
+                        marker.innerHTML = `
+                            <div class="trivia-icon">?</div>
+                            <span class="trivia-title">${fact.title}</span>
+                            <div class="trivia-body">${fact.body}</div>
+                        `;
+                        container.appendChild(marker);
+                        factIndex++;
+                    }
+                }
+            },
+
+            async startLevel() {
+                this.state.isDaily = false;
+                await this.fetchData('/api/game/start');
+            },
+
+            async startDaily() {
+                this.state.isDaily = true;
+                await this.fetchData('/api/game/daily');
+            },
+
+            async fetchData(endpoint) {
+                try {
+                    const res = await fetch(endpoint, { method: 'POST' });
+                    const data = await res.json();
+                    
+                    if(data.status === 'success') {
+                        this.state.questions = data.questions;
+                        this.state.qIndex = 0;
+                        this.openScene();
+                    } else {
+                        alert(data.error);
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert("Sunucu bağlantısı kurulamadı.");
+                }
+            },
+
+            openScene() {
+                const q = this.state.questions[this.state.qIndex];
+                if(!q) return this.finishLevel();
+
+                // State sıfırla
+                this.state.hintUsed = false;
+                this.state.isLocked = false;
+
+                const overlay = document.getElementById('stage-overlay');
+                const visual = document.getElementById('visual-root');
+                const title = document.getElementById('q-text');
+                const meta = document.getElementById('q-meta');
+                const opts = document.getElementById('options-root');
+                const inputArea = document.getElementById('input-root');
+                const hintBox = document.getElementById('hint-text');
+
+                // Görsel
+                visual.innerHTML = '';
+                if(q.image) {
+                    const img = document.createElement('img');
+                    img.src = q.image;
+                    if(q.image_effect === 'blur') img.classList.add('fx-blur');
+                    if(q.image_effect === 'pixel') img.classList.add('fx-pixel');
+                    visual.appendChild(img);
+                } else {
+                    visual.innerHTML = '<i data-feather="film" style="color:#333; width:80px; height:80px;"></i>';
+                    feather.replace();
+                }
+
+                // İçerik
+                title.innerText = q.text;
+                meta.innerText = q.type.toUpperCase().replace('_', ' ');
+                hintBox.style.display = 'none';
+                hintBox.innerText = q.hint;
+
+                // Giriş Modu
+                opts.innerHTML = '';
+                inputArea.style.display = 'none';
+
+                if(q.input_mode === 'keyboard') {
+                    inputArea.style.display = 'block';
+                    document.getElementById('text-input').value = '';
+                    document.getElementById('text-input').focus();
+                } else {
+                    q.options.forEach(opt => {
+                        const btn = document.createElement('div');
+                        btn.className = 'opt-btn';
+                        btn.innerHTML = `<span>${opt}</span> <i data-feather="chevron-right"></i>`;
+                        btn.onclick = () => this.handleChoice(opt, btn);
+                        opts.appendChild(btn);
+                    });
+                    feather.replace();
+                }
+
+                overlay.style.display = 'flex';
+                setTimeout(() => overlay.classList.add('visible'), 50);
+            },
+
+            closeScene() {
+                const overlay = document.getElementById('stage-overlay');
+                overlay.classList.remove('visible');
+                setTimeout(() => overlay.style.display = 'none', 400);
+            },
+
+            async handleChoice(answer, btn) {
+                if(this.state.isLocked) return;
+                this.state.isLocked = true;
+
+                const q = this.state.questions[this.state.qIndex];
+                const isCorrect = answer.trim() === q.answer.trim();
+
+                if(isCorrect) btn.classList.add('correct');
+                else btn.classList.add('wrong');
+
+                await this.processAnswer(isCorrect, q.movie_id);
+
+                setTimeout(() => {
+                    if(isCorrect) this.nextQuestion();
+                    else {
+                        alert(`KESME! Yanlış cevap.\nDoğru cevap: ${q.answer}`);
+                        location.reload();
+                    }
+                }, 1000);
+            },
+
+            async handleInput(val) {
+                if(this.state.isLocked) return;
+                this.state.isLocked = true;
+
+                const q = this.state.questions[this.state.qIndex];
+                const isCorrect = val.trim().toLowerCase() === q.answer.trim().toLowerCase();
+
+                const input = document.getElementById('text-input');
+                input.style.borderColor = isCorrect ? 'var(--color-success)' : 'var(--color-error)';
+
+                await this.processAnswer(isCorrect, q.movie_id);
+
+                setTimeout(() => {
+                    if(isCorrect) this.nextQuestion();
+                    else {
+                        alert(`KESME! Yanlış cevap.\nDoğru cevap: ${q.answer}`);
+                        location.reload();
+                    }
+                }, 1000);
+            },
+
+            async processAnswer(correct, mid) {
+                const res = await fetch('/api/game/submit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        correct: correct,
+                        movie_id: mid,
+                        is_daily: this.state.isDaily,
+                        hint_used: this.state.hintUsed
+                    })
+                });
+                const data = await res.json();
+                document.getElementById('ui-xp').innerText = data.xp;
+            },
+
+            nextQuestion() {
+                this.state.qIndex++;
+                if(this.state.qIndex < this.state.questions.length) {
+                    this.openScene();
+                } else {
+                    this.finishLevel();
+                }
+            },
+
+            async finishLevel() {
+                this.closeScene();
+                if(!this.state.isDaily) {
+                    await fetch('/api/game/levelup', { method: 'POST' });
+                }
+                alert("MÜKEMMEL! Bölüm tamamlandı.");
+                location.reload();
+            },
+
+            revealHint() {
+                document.getElementById('hint-text').style.display = 'block';
+                this.state.hintUsed = true;
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => Director.init());
+    </script>
+</body>
+</html>
